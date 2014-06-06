@@ -3,6 +3,8 @@
 #include <sys/time.h>
 #include <signal.h>
 #include <stdlib.h>
+#include <pthread.h>
+#include <termios.h>
 
 #undef offsetof
 #ifdef __compiler_offsetof
@@ -40,8 +42,40 @@ struct snake {
 	int x, y;
 };
 
+struct _food {
+    int x, y;
+}food;
+
 struct snake *shead = NULL;
 int runing = 0;
+
+void init_edge(void)
+{
+	int i;
+	
+	printf("\33[?25l\33[2J");
+	
+	for(i=1; i<=LEN+2; i++) {
+		printf("\33[%d;1H\33[%dm%c\33[0m", i, EDGE_COL, EDGE);
+	}
+	for(i=1; i<=LEN+2; i++) {
+		printf("\33[%d;%dH\33[%dm%c\33[0m", i, WIDE+2, EDGE_COL, EDGE);
+	}
+	for(i=1; i<=WIDE; i++) {
+		printf("\33[1;%dH\33[%dm%c\33[0m", i+1, EDGE_COL, EDGE);
+	}
+	for(i=1; i<=WIDE; i++) {
+		printf("\33[%d;%dH\33[%dm%c\33[0m", LEN+2, i+1, EDGE_COL, EDGE);
+	}
+	
+	printf("\33[23;1H");
+	fflush(stdout);
+}
+
+void exit_edge(void)
+{
+	printf("\33[1;1H\33[?25h\33[2JGood Bye!\n");
+}
 
 int init_snake(struct snake **s)
 {
@@ -143,7 +177,6 @@ void move_snake(struct snake *s, enum action ac)
 	
 	x = s->x;
 	y = s->y;
-	struct snake *stmp = s;
 	
 	switch (ac) {
 		case up:
@@ -168,7 +201,41 @@ void move_snake(struct snake *s, enum action ac)
 		exchange(&(s->y), &y);
 	}
 	printf("\33[%d;%dH\33[%dm%c\33[0m", x+1, y+1, SNAKE_COL, ' ');
-	show_snake(stmp);
+}
+
+int ahead_is_body(int ahead_x, int ahead_y)
+{
+    struct snake *s;
+    if (shead->head.next != NULL) {
+        s = shead;
+        do
+        {
+            s = container_of(s->head.next, struct snake, head);
+            if (ahead_x == s->x && ahead_y == s->y) {
+                return 0;
+            }
+        } while (s->head.next != NULL);
+    }
+    
+    return -1;
+}
+
+int ahead_is_edge(int ahead_x, int ahead_y)
+{
+    if (ahead_x == 0 || ahead_x == 21 || 
+		ahead_y == 0 || ahead_y == 41)
+	{
+		return 0;
+	} 
+    return -1;
+}
+
+int ahead_is_food(int ahead_x, int ahead_y)
+{
+    if (ahead_x == food.x && ahead_y == food.y) {
+        return 0;
+    }
+    return -1;
 }
 
 int look_ahead(void)
@@ -192,67 +259,141 @@ int look_ahead(void)
 			;
 	}
 	
-	if (ahead_x == 0 || ahead_x == 21 || 
-		ahead_y == 0 || ahead_y == 41)
-	{
+	if (ahead_is_edge(ahead_x, ahead_y) == 0 ||
+        ahead_is_body(ahead_x, ahead_y) == 0) {
 		return -1;
-	}
+	} else if (ahead_is_food(ahead_x, ahead_y) == 0) {
+        return 1;
+    } else {
+        return 0;
+    }
 	
 	return 0;
 }
 
 void move(int signo)
 {
-	if (look_ahead() < 0)
-	{
-		runing = 0;
-		return;
-	}
-	
-	move_snake(shead, last_ac);
+	switch (look_ahead())
+    {
+        case 0:
+            move_snake(shead, last_ac);
+            break;
+        case 1:
+            add_snake(shead, food.x, food.y);
+            break;
+        default:
+            runing = 0;
+    }
+    
+    show_snake(shead);
 }
 
-void init_edge(void)
+void init_food(void)
 {
-	int i;
-	
-	printf("\33[?25l\33[2J");
-	
-	for(i=1; i<=LEN+2; i++) {
-		printf("\33[%d;1H\33[%dm%c\33[0m", i, EDGE_COL, EDGE);
-	}
-	for(i=1; i<=LEN+2; i++) {
-		printf("\33[%d;%dH\33[%dm%c\33[0m", i, WIDE+2, EDGE_COL, EDGE);
-	}
-	for(i=1; i<=WIDE; i++) {
-		printf("\33[1;%dH\33[%dm%c\33[0m", i+1, EDGE_COL, EDGE);
-	}
-	for(i=1; i<=WIDE; i++) {
-		printf("\33[%d;%dH\33[%dm%c\33[0m", LEN+2, i+1, EDGE_COL, EDGE);
-	}
-	
-	printf("\33[23;1H");
-	fflush(stdout);
+    srandom(getpid());
+}
+
+void *food_thread(void *arg)
+{
+    food.x = 8;
+    food.y = 30;
+    
+    printf("\33[%d;%dH\33[%dm%c\33[0m", food.x+1, food.y+1, SNAKE_COL, 'm');
+    
+    pthread_exit(0);
+}
+
+struct termios save, raw;
+void init_terminal(void)
+{
+    tcgetattr(0, &save);
+    cfmakeraw(&raw);
+    tcsetattr(0, 0, &raw);
+}
+
+void exit_terminal(void)
+{
+    tcsetattr(0, 0, &save);
+}
+
+void *key_thread(void *arg)
+{
+    char ch;
+    enum action ac;
+    while (runing) {
+        ch = getchar();
+key_thread_check_out:
+        if (ch == 'q' || ch == 'Q') {
+            goto key_thread_out;
+        }
+        else if (ch == 27) {
+            ch = getchar();
+            if (ch == '[') {
+                ch = getchar();
+                switch (ch) {
+                    case 'A':
+                        //printf("up\n");
+                        ac = up;
+                        break;
+                    case 'B':
+                        //printf("down\n");
+                        ac = down;
+                        break;
+                    case 'C':
+                        //printf("right\n");
+                        ac = right;
+                        break;
+                    case 'D':
+                        //printf("left\n");
+                        ac = left;
+                        break;
+                    default:
+                        goto key_thread_check_out;
+                }
+                last_ac = ac;
+                move(0);
+            } else {
+                goto key_thread_check_out;
+            }
+        }
+    }
+
+key_thread_out:
+    runing = 0;
+    pthread_exit(0);
 }
 
 int main()
 {
+    int ret = 0;
+    
 	init_edge();
-	
+	init_terminal();
+    
 	struct snake *s = NULL;
 	init_snake(&s);
-	
 	shead = s;
 	
-	show_snake(s);
-	sleep(1);
 	add_snake(s, 9, 20);
 	add_snake(s, 8, 20);
+    add_snake(s, 7, 20);
 	show_snake(s);
 	sleep(1);
 	
 	last_ac = right;
 	
+    pthread_t thd_food, thd_key;
+    
+    ret = pthread_create(&thd_food, NULL, food_thread, NULL);
+    if (ret != 0) {
+        goto done;
+    }
+    
+    ret = pthread_create(&thd_key, NULL, key_thread, NULL);
+    if (ret != 0) {
+        goto done;
+    }
+    
 	signal(SIGALRM, move);
 	struct itimerval itime = {{1, 0}, {1, 0}};
 	setitimer(ITIMER_REAL, &itime, NULL);
@@ -260,8 +401,11 @@ int main()
 	while (runing) {
 		;
 	}
-	
+
+done:
 	del_snake(s);
-	
+    exit_terminal();
+    exit_edge();
+    
 	return 0;
 }
