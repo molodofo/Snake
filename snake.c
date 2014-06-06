@@ -41,6 +41,7 @@ struct snake {
 };
 
 struct snake *shead = NULL;
+int runing = 0;
 
 int init_snake(struct snake **s)
 {
@@ -52,6 +53,8 @@ int init_snake(struct snake **s)
 	(*s)->head.next = NULL;
 	(*s)->x = 10;
 	(*s)->y = 20;
+	
+	runing = 1;
 	
 	return 0;
 }
@@ -144,7 +147,16 @@ void move_snake(struct snake *s, enum action ac)
 	
 	switch (ac) {
 		case up:
-			s->x = s->x - 1;
+			s->x--;
+			break;
+		case down:
+			s->x++;
+			break;
+		case right:
+			s->y++;
+			break;
+		case left:
+			s->y--;
 			break;
 		default:
 			;
@@ -159,8 +171,44 @@ void move_snake(struct snake *s, enum action ac)
 	show_snake(stmp);
 }
 
+int look_ahead(void)
+{
+	int ahead_x = shead->x, ahead_y = shead->y;
+	switch (last_ac)
+	{
+		case up:
+			ahead_x--;
+			break;
+		case down:
+			ahead_x++;
+			break;
+		case right:
+			ahead_y++;
+			break;
+		case left:
+			ahead_y--;
+			break;
+		default:
+			;
+	}
+	
+	if (ahead_x == 0 || ahead_x == 21 || 
+		ahead_y == 0 || ahead_y == 41)
+	{
+		return -1;
+	}
+	
+	return 0;
+}
+
 void move(int signo)
 {
+	if (look_ahead() < 0)
+	{
+		runing = 0;
+		return;
+	}
+	
 	move_snake(shead, last_ac);
 }
 
@@ -196,26 +244,24 @@ int main()
 	
 	shead = s;
 	
+	show_snake(s);
+	sleep(1);
 	add_snake(s, 9, 20);
 	add_snake(s, 8, 20);
 	show_snake(s);
 	sleep(1);
 	
-	#if 0
-	int i;
-	for(i=0; i<3; i++) {
-		move_snake(s, up);
-		sleep(1);
-	}
-	#endif
+	last_ac = right;
 	
 	signal(SIGALRM, move);
 	struct itimerval itime = {{1, 0}, {1, 0}};
 	setitimer(ITIMER_REAL, &itime, NULL);
 	
-	while (1) {
-		sleep(5);
+	while (runing) {
+		;
 	}
+	
+	del_snake(s);
 	
 	return 0;
 }
