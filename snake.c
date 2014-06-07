@@ -71,7 +71,7 @@ void init_edge(void)
         printf("\33[%d;%dH\33[%dm%c\33[0m", LEN+2, i+1, EDGE_COL, EDGE);
     }
     
-    printf("\33[23;1H");
+    printf("\33[%d;1H\33[33mpress \'q\' or \'Q\' to quit\33[7m\33[0m", LEN + 3);
     fflush(stdout);
 }
 
@@ -137,6 +137,12 @@ void del_snake(struct snake *shead)
     shead = NULL;
 }
 
+void set_time_blank(void)
+{
+    struct itimerval itime = {{0, 0}, {0, 50000}};
+    setitimer(ITIMER_REAL, &itime, NULL);
+}
+
 void show_snake(struct snake *s)
 {
     if (s == NULL) {
@@ -149,7 +155,7 @@ void show_snake(struct snake *s)
         printf("\33[%d;%dH\33[%dm%c\33[0m", s->x+1, s->y+1, SNAKE_COL, SNAKE_BODY);
     }
     
-    printf("\33[23;1H");
+    printf("\33[%d;1H", LEN+3);
     fflush(stdout);
 }
 
@@ -305,12 +311,29 @@ void move(void)
     show_snake(shead);
     
     //reclocking
-    struct itimerval itime = {{0, 0}, {1, 0}};
-    setitimer(ITIMER_REAL, &itime, NULL);
+    set_time_blank();
 }
 
-void move_thread(int signo)
+void find_food(void)
 {
+    if (food.x < shead->x) {
+        last_ac = up;
+    } else if (food.x > shead->x) {
+        last_ac = down;
+    } else {
+        if (food.y < shead->y) {
+            last_ac = left;
+        } else if (food.y > shead->y) {
+            last_ac = right;
+        } else {
+            return;
+        }
+    }
+}
+
+void timer_thread(int signo)
+{
+    find_food();
     move();
 }
 
@@ -327,7 +350,7 @@ void *food_thread(void *arg)
         x = random()%LEN;
         y = random()%WIDE;
         
-        while(is_body(x, y) == 0 || is_edge(x, y) == 0) {
+        while(is_body(x, y) == 0 || is_edge(x, y) == 0 || is_food(x, y) == 0) {
             x = random()%LEN;
             y = random()%WIDE;
         }
@@ -415,7 +438,7 @@ int main()
     shead = s;
     
     add_snake(s, 9, 20);
-    
+    show_snake(s);
     sleep(1);
     
     last_ac = right;
@@ -432,8 +455,8 @@ int main()
         goto done;
     }
     
-    signal(SIGALRM, move_thread);
-    struct itimerval itime = {{0, 0}, {1, 0}};
+    signal(SIGALRM, timer_thread);
+    struct itimerval itime = {{0, 0}, {0, 500000}};
     setitimer(ITIMER_REAL, &itime, NULL);
     
     while (runing) {
