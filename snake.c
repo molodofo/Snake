@@ -415,9 +415,7 @@ int main()
     shead = s;
     
     add_snake(s, 9, 20);
-    add_snake(s, 8, 20);
-    add_snake(s, 7, 20);
-    show_snake(s);
+    
     sleep(1);
     
     last_ac = right;
