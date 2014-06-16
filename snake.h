@@ -3,7 +3,6 @@
 
 #include "list.h"
 
-<<<<<<< HEAD
 #define BOOL int
 #define TRUE  1
 #define FALSE 0
@@ -19,8 +18,6 @@
 #define SNAKE_HEAD '0'
 #define SNAKE_BODY 'o'
 
-=======
->>>>>>> 1b08611d6f408c66a55d133392ddc0e27aff267b
 struct coordinate {
 	int x, y;
 };
@@ -30,11 +27,8 @@ struct point_set {
 	struct coordinate point;
 };
 
-<<<<<<< HEAD
 BOOL is_body(struct coordinate point);
 BOOL is_edge(struct coordinate point);
 BOOL is_food(struct coordinate point);
 
-=======
->>>>>>> 1b08611d6f408c66a55d133392ddc0e27aff267b
 #endif

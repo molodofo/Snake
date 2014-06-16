@@ -9,19 +9,10 @@
 
 #include "list.h"
 #include "snake.h"
-<<<<<<< HEAD
 #include "a_star.h"
 #include "find_food.h"
 
 #include <mcheck.h>
-=======
-
-#include <mcheck.h>
-
-#define BOOL int
-#define TRUE  1
-#define FALSE 0
->>>>>>> 1b08611d6f408c66a55d133392ddc0e27aff267b
 
 static pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
 static pthread_cond_t cond = PTHREAD_COND_INITIALIZER;
@@ -29,20 +20,6 @@ static pthread_cond_t cond = PTHREAD_COND_INITIALIZER;
 static struct point_set *snake = NULL;
 static int runing = 0;
 static struct coordinate next_point = {0, 0}, food = {0, 0};
-<<<<<<< HEAD
-=======
-
-#define INIT_POSITION_X 10
-#define INIT_POSITION_Y 20
-
-#define LEN 20
-#define WIDE 40
-#define EDGE '#'
-#define SNAKE_COL 31
-#define EDGE_COL 33
-#define SNAKE_HEAD '0'
-#define SNAKE_BODY 'o'
->>>>>>> 1b08611d6f408c66a55d133392ddc0e27aff267b
 
 void init_edge(void)
 {
@@ -98,19 +75,10 @@ int snake_add_head(struct point_set *shead, struct coordinate head)
     }
     
     list_add(&(s->list), &(shead->list));
-<<<<<<< HEAD
     
     memcpy((void *)&(s->point), (void *)&(shead->point), sizeof(struct coordinate));
     memcpy((void *)&(shead->point), (void *)&(head), sizeof(struct coordinate));
     
-=======
-    
-    s->point.x = shead->point.x;
-    s->point.y = shead->point.y;
-    shead->point.x = head.x;
-    shead->point.y = head.y;
-    
->>>>>>> 1b08611d6f408c66a55d133392ddc0e27aff267b
     printf("\33[%d;%dH\33[%dm%c\33[0m", s->point.x+1, s->point.y+1, SNAKE_COL, SNAKE_BODY);
     printf("\33[%d;%dH\33[%dm%c\33[0m", head.x+1, head.y+1, SNAKE_COL, SNAKE_HEAD);
     
@@ -175,7 +143,6 @@ void exchange(int *a, int *b)
 }
 
 BOOL is_body(struct coordinate point)
-<<<<<<< HEAD
 {
 	if (snake == NULL)
 		return FALSE;
@@ -196,31 +163,6 @@ BOOL is_body(struct coordinate point)
 
 BOOL is_edge(struct coordinate point)
 {
-=======
-{
-	int i = 0;
-	
-	if (snake == NULL)
-		return FALSE;
-	
-    struct point_set *s = snake;
-    struct list_head *slist = NULL;
-    //s = container_of(snake->list.next, struct point_set, list);
-    
-	list_for_each(slist, &(snake->list)) {
-		printf("\33[%d;%dH\33[%dm%d\33[0m", 10, WIDE+3, SNAKE_COL, i++);
-		s = container_of(slist, struct point_set, list);
-		if (point.x == s->point.x && point.y == s->point.y) {
-			return TRUE;
-		}
-	}
-    
-    return FALSE;
-}
-
-BOOL is_edge(struct coordinate point)
-{
->>>>>>> 1b08611d6f408c66a55d133392ddc0e27aff267b
     if (point.x == 0 || point.x == LEN+1 || 
         point.y == 0 || point.y == WIDE+1)
     {
@@ -239,7 +181,6 @@ BOOL is_food(struct coordinate point)
 
 int look_ahead(struct coordinate point)
 {
-<<<<<<< HEAD
     if (is_edge(point) == TRUE) {
 		return -2;
 	} else if (is_body(point) == TRUE) {
@@ -247,13 +188,6 @@ int look_ahead(struct coordinate point)
     } else if (point.x == snake->point.x && point.y == snake->point.y) {
 		return 2;
     } else if (is_food(point) == TRUE) {
-=======
-    if (is_edge(next_point) == TRUE) {
-		return -2;
-	} else if (is_body(next_point) == TRUE) {
-        return -1;
-    } else if (is_food(next_point) == TRUE) {
->>>>>>> 1b08611d6f408c66a55d133392ddc0e27aff267b
         return 1;
     } else {
         return 0;
@@ -264,11 +198,7 @@ int look_ahead(struct coordinate point)
 
 void move(void)
 {
-<<<<<<< HEAD
 	int ahead = look_ahead(next_point);
-=======
-	int ahead = look_ahead();
->>>>>>> 1b08611d6f408c66a55d133392ddc0e27aff267b
 	
     switch (ahead)
     {
@@ -294,26 +224,6 @@ void move(void)
     set_time_blank();
 }
 
-<<<<<<< HEAD
-=======
-void find_food(void)
-{
-    if (food.x < snake->point.x) {
-        next_point.x--;
-    } else if (food.x > snake->point.x) {
-        next_point.x++;
-    } else {
-        if (food.y < snake->point.y) {
-            next_point.y--;
-        } else if (food.y > snake->point.y) {
-            next_point.y++;
-        } else {
-            next_point.x--;
-        }
-    }
-}
-
->>>>>>> 1b08611d6f408c66a55d133392ddc0e27aff267b
 void timer_thread(int signo)
 {
 	struct coordinate point;
@@ -332,19 +242,11 @@ void init_food(void)
 void *food_thread(void *arg)
 {
     struct coordinate f;
-<<<<<<< HEAD
     int i = 0;
     
     srandom(time(NULL));
     
     while (runing) {printf("\33[%d;%dH\33[%dmfood:%d\33[0m", 1, WIDE+3, SNAKE_COL, i++);
-=======
-    int i = 0, j = 0;
-    
-    srandom(time(NULL));
-    
-    while (runing) {
->>>>>>> 1b08611d6f408c66a55d133392ddc0e27aff267b
         f.x = random()%LEN;
         f.y = random()%WIDE;
         
@@ -442,7 +344,6 @@ int main()
 	
     next_point.x = INIT_POSITION_X-1;
     next_point.y = INIT_POSITION_Y;
-<<<<<<< HEAD
     
     snake_add_head(snake, next_point);
     next_point.x--;
@@ -469,11 +370,6 @@ int main()
     
     runing = 1;
     
-=======
-    
-    runing = 1;
-    
->>>>>>> 1b08611d6f408c66a55d133392ddc0e27aff267b
     sleep(1);
     
     pthread_t thd_food, thd_key;
